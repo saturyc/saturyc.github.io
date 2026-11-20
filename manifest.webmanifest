@@ -1,6 +1,6 @@
 {
-  "name": "내 달력 메모",
-  "short_name": "달력메모",
+  "name": "YCalendar",
+  "short_name": "YCalendar",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

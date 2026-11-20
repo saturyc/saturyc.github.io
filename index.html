@@ -2,57 +2,59 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>내 달력 메모</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>YCalendar</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#3b6cf6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="달력메모">
+<meta name="apple-mobile-web-app-title" content="YCalendar">
 <style>
-  :root{--bg:#f5f6f8;--card:#fff;--line:#e3e6eb;--text:#1f2430;--sub:#7a8294;--accent:#3b6cf6;--today:#e8efff;--sun:#d9475a;--sat:#3b6cf6}
-  @media (prefers-color-scheme:dark){:root{--bg:#14161b;--card:#1d2027;--line:#2c313b;--text:#e6e9ef;--sub:#8a93a6;--accent:#6b93ff;--today:#26325a;--sun:#ff7b8c;--sat:#6b93ff}}
+  :root{--bg:#fff;--card:#fff;--line:#d9dde4;--dot:#d3d7de;--text:#1f2430;--sub:#7a8294;--accent:#3b6cf6;--accentbg:#e8efff;--sun:#d9475a;--sat:#3b6cf6;--head:#f1f2f5;--dark:#3f4349;--ok:#1f9d57;--wk:clamp(300px,26vw,460px)}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161b;--card:#1d2027;--line:#2c313b;--dot:#363c48;--text:#e6e9ef;--sub:#8a93a6;--accent:#6b93ff;--accentbg:#26325a;--sun:#ff7b8c;--sat:#6b93ff;--head:#22262e;--dark:#3a3f4a;--ok:#4cc38a}}
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--text)}
-  header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
-  header h1{font-size:18px;margin:0 8px 0 0}
-  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+  html,body{height:100%;margin:0}
+  body{font-family:-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--text);font-size:13px}
+  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
   button:hover{border-color:var(--accent)}
   button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  #title{font-size:17px;font-weight:600;min-width:120px;text-align:center}
-  .spacer{flex:1}
-  #mode{font-size:12px;color:var(--sub)}
-  #setup{display:none;flex-direction:column;align-items:center;gap:12px;margin:15vh auto 0;max-width:420px;padding:0 16px;text-align:center}
-  #setup input{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
-  #setup small{color:var(--sub);line-height:1.5}
-  #app{display:none;max-width:1100px;margin:16px auto;padding:0 12px;gap:16px;grid-template-columns:1fr 340px}
-  @media (max-width:820px){#app{grid-template-columns:1fr}}
-  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .grid{display:grid;grid-template-columns:repeat(7,1fr)}
-  .dow{padding:8px 0;text-align:center;font-size:12px;color:var(--sub);border-bottom:1px solid var(--line)}
-  .dow:first-child,.cell.sun .num{color:var(--sun)}
-  .dow:last-child,.cell.sat .num{color:var(--sat)}
-  .cell{min-height:84px;padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;overflow:hidden}
-  .cell:nth-child(7n){border-right:none}
-  .cell.other{opacity:.35}
-  .cell.today{background:var(--today)}
-  .cell.sel{outline:2px solid var(--accent);outline-offset:-2px}
-  .num{font-size:13px;font-weight:600}
-  .chip{font-size:11px;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chip.done{text-decoration:line-through;color:var(--sub)}
-  .more{font-size:11px;color:var(--sub);margin-top:2px}
-  #side{padding:14px;display:flex;flex-direction:column;gap:10px;align-self:start}
-  #side h2{font-size:15px;margin:0}
-  .memo{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
-  .memo .row{display:flex;gap:6px;align-items:center}
-  .memo input[type=time]{font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 4px}
-  .memo textarea{font:inherit;color:inherit;background:transparent;border:none;resize:vertical;min-height:48px;outline:none;width:100%}
-  .memo.done textarea{text-decoration:line-through;color:var(--sub)}
-  .del{margin-left:auto;padding:2px 8px;color:var(--sub)}
-  #status{font-size:12px;color:var(--sub);min-height:16px}
-  .hbtn{padding:3px 9px;font-size:12px;border-radius:6px;white-space:nowrap}
+  #login{display:none;flex-direction:column;align-items:center;gap:16px;margin-top:20vh}
+  #login h1{margin:0;font-size:24px;font-weight:600}
+  #app{display:none;height:100vh;height:100dvh;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+  .top{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--card);position:relative}
+  .top .sp{flex:1}
+  .top button{height:30px;padding:0 10px}
+  .top .ic{width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+  #title{font-weight:600;font-size:15px;min-width:110px;text-align:center}
+  #menu{display:none;position:absolute;right:10px;top:44px;z-index:30;width:250px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+  #menu .mi{padding:9px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+  #menu .mi:hover{background:var(--head)}
+  #menu .info{cursor:default;display:block;line-height:1.5}
+  #menu .info:hover{background:none}
+  #menu .info small{color:var(--sub);display:block}
+  #menu select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+  #menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+  #cal{flex:1 1 auto;min-height:0;overflow:auto;position:relative;--lh:24px}
+  #dow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) var(--wk);position:sticky;top:0;z-index:5;background:var(--head);border-bottom:1px solid var(--line);height:24px;line-height:24px;text-align:center;font-weight:600;font-size:12px}
+  #dow div:first-child{color:var(--sun)}
+  #dow div:nth-child(7){color:var(--sat)}
+  .week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) var(--wk);border-bottom:1px solid var(--line)}
+  .day{min-width:0;border-right:1px solid var(--line)}
+  .dh{height:22px;line-height:22px;padding:0 6px;font-weight:600;background:var(--head);font-size:12px;border-bottom:1px solid var(--line)}
+  .day.sun .dh{color:var(--sun)}
+  .day.sat .dh{color:var(--sat)}
+  .day.other .dh{opacity:.5}
+  .day.today .dh{background:var(--accentbg);color:var(--accent)}
+  .dw{display:none}
+  .wkb{min-width:0;border-left:2px solid var(--line)}
+  .wh{height:22px;line-height:22px;padding:0 8px;background:var(--dark);color:#fff;font-weight:600;font-size:12px}
+  .ln{display:flex;height:var(--lh);border-bottom:1px dotted var(--dot)}
+  .ln input.t{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--text);font:inherit;font-size:clamp(11px,calc(var(--lh)*.54),14px);padding:0 5px;outline:none;border-radius:0}
+  .ln input.t:focus{background:var(--accentbg)}
+  .ck{flex:0 0 22px;display:flex;align-items:center;justify-content:center;border-left:1px dotted var(--dot);cursor:pointer;color:var(--ok);font-weight:700;user-select:none;-webkit-user-select:none}
+  .ln.done input.t{text-decoration:line-through;color:var(--sub)}
   #modal{position:fixed;inset:0;background:rgba(15,20,40,.45);display:none;align-items:center;justify-content:center;z-index:50}
   #modal.open{display:flex}
   .mbox{background:var(--card);color:var(--text);border-radius:12px;width:min(480px,94vw);max-height:88vh;overflow:auto;padding:16px 18px}
@@ -63,54 +65,56 @@
   .mbox .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   #toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99;max-width:90vw}
   #toast.show{opacity:.94}
-  #empty{font-size:13px;color:var(--sub)}
+  /* 모바일: 한 주씩, 요일별로 세로 배치, 주간 메모는 맨 아래 */
+  @media (max-width:700px){
+    body{font-size:15px}
+    #dow{display:none}
+    .week{display:block;border-bottom:0}
+    .day{border-right:0;margin-bottom:10px}
+    .dh{height:32px;line-height:32px;font-size:14px;padding:0 10px}
+    .dw{display:inline}
+    .wkb{border-left:0;margin-top:4px;margin-bottom:24px}
+    .wh{height:32px;line-height:32px;font-size:14px;padding:0 10px}
+    .ln input.t{font-size:15px;padding:0 10px}
+    .ck{flex-basis:44px;font-size:20px}
+    #title{min-width:0;flex:1}
+    #menu{right:6px}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>내 달력 메모</h1>
-  <button id="prev">◀</button>
-  <div id="title"></div>
-  <button id="next">▶</button>
-  <button id="todayBtn">오늘</button>
-  <div class="spacer"></div>
-  <span id="mode"></span>
-  <button id="logout" style="display:none">로그아웃</button>
-  <button class="hbtn" id="btnInstall" style="display:none">홈화면</button>
-</header>
-
-<div id="login" style="display:none;flex-direction:column;align-items:center;gap:16px;margin-top:20vh">
-  <div>Google 계정으로 로그인하세요</div>
+<div id="login">
+  <h1>YCalendar</h1>
   <button class="primary" id="loginBtn">Google 로그인</button>
 </div>
 
 <div id="app">
-  <div class="panel">
-    <div class="grid" id="dows"></div>
-    <div class="grid" id="cells"></div>
+  <header class="top">
+    <button id="prev" aria-label="이전">&#8249;</button>
+    <span id="title"></span>
+    <button id="next" aria-label="다음">&#8250;</button>
+    <button id="todayBtn">오늘</button>
+    <span class="sp"></span>
+    <button class="ic" id="menuBtn" aria-label="메뉴">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+    </button>
+  </header>
+  <div id="menu">
+    <div class="mi info" id="miInfo"></div>
+    <hr>
+    <div class="mi" style="cursor:default"><span>날짜별 줄 수</span><select id="selLines"></select></div>
+    <div class="mi" id="miInstall">홈화면 추가</div>
+    <div class="mi" id="miExport">데이터 내보내기 (JSON)</div>
+    <div class="mi" id="miLogout">로그아웃</div>
   </div>
-  <div class="panel" id="side">
-    <h2 id="selLabel"></h2>
-    <button class="primary" id="addBtn">+ 메모 추가</button>
-    <div id="list"></div>
-    <div id="empty">메모가 없음</div>
-    <div id="status"></div>
-  </div>
+  <main id="cal"></main>
 </div>
 
 <div id="modal"></div>
 <div id="toast"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  doc, onSnapshot, setDoc, updateDoc, deleteField }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-/* ▼ Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에서 복사한 값으로 교체
-     (교체 전에는 이 기기에만 저장되는 로컬 모드로 동작) */
+/* ▼ Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)의 값 */
 const firebaseConfig = {
   apiKey: "AIzaSyBRSm4qBkpwlxr_MIgAhd3TbCrvCgkoup4",
   authDomain: "calendar-5d976.firebaseapp.com",
@@ -119,197 +123,225 @@ const firebaseConfig = {
   messagingSenderId: "719540754928",
   appId: "1:719540754928:web:18be795ea64b2705072535"
 };
-const useCloud = firebaseConfig.apiKey !== "YOUR_API_KEY";
-let auth = null, db = null;
-if (useCloud) {
-  const fbApp = initializeApp(firebaseConfig);
-  auth = getAuth(fbApp);
-  // 오프라인 캐시 사용 → 같은 데이터 재조회 시 읽기 횟수 절약
-  db = initializeFirestore(fbApp, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
-}
+const FORCE_LOCAL = false;   // true면 로그인 없이 이 기기에만 저장 (테스트용)
+const useCloud = !FORCE_LOCAL && firebaseConfig.apiKey !== "YOUR_API_KEY";
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, "0");
-const ymd = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;   // m: 0~11
-const uid8 = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-const now = new Date();
-let view = { y: now.getFullYear(), m: now.getMonth() };
-let selected = ymd(now.getFullYear(), now.getMonth(), now.getDate());
-let memoMap = {};          // id -> memo (전체)
-let store = null;          // 저장소 어댑터
-let unsub = null;
-const timers = {};
-const pending = {};        // 아직 저장 안 된 메모의 저장 함수
-const flushAll = () => Object.values(pending).forEach(f => f());
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const keyD = dt => `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
+const addDays = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
+const sundayOf = dt => addDays(dt, -dt.getDay());
+const DOW = ["일","월","화","수","목","금","토"];
+const mq = matchMedia("(max-width:700px)");
+const MAXROWS = 30;
+
+/* ---------- Firebase (클라우드 모드일 때만 불러옴) ---------- */
+let FB = null, auth = null, db = null;
+if (useCloud) {
+  const V = "10.12.2", base = `https://www.gstatic.com/firebasejs/${V}/`;
+  const [appM, authM, fsM] = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-auth.js"), import(base + "firebase-firestore.js")]);
+  FB = Object.assign({}, authM, fsM);
+  const fbApp = appM.initializeApp(firebaseConfig);
+  auth = authM.getAuth(fbApp);
+  db = fsM.initializeFirestore(fbApp, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) });
+}
+
+/* ---------- 상태 ---------- */
+const today0 = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+let anchor = today0();
+let LINES = Math.max(4, Math.min(10, +localStorage.getItem("ycal_lines") || 5));
+let data = {};          // 줄 키 -> {t:글자, d:완료(0/1)}   키: d날짜_줄번호 / w주일요일날짜_줄번호
+let store = null, unsub = null, who = "";
+const pending = {}, timers = {};
+
+/* ---------- 저장소 ---------- */
+// 클라우드: users/{uid} 문서 1개의 m(map)에 모든 줄을 저장 → 변경 시 읽기 1회
+function cloudStore(uid) {
+  const ref = FB.doc(db, "users", uid);
+  return {
+    label: "클라우드 동기화",
+    subscribe: cb => FB.onSnapshot(ref, snap => cb(snap.exists() ? (snap.data().m || {}) : {}), err => toast("불러오기 오류: " + err.message)),
+    set: (k, v) => FB.setDoc(ref, { m: { [k]: v === null ? FB.deleteField() : v } }, { merge: true })
+  };
+}
+function localStore() {
+  const LS = "ycal_local_v1";
+  const load = () => { try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch { return {}; } };
+  let cb = null;
+  if (FORCE_LOCAL && !localStorage.getItem(LS)) {   // 테스트 모드: 처음 한 번 예시 데이터 채움
+    const t = today0(), s = sundayOf(t), d = {};
+    d["d" + keyD(t) + "_0"] = { t: "SAM 교육", d: 0 };
+    d["d" + keyD(t) + "_1"] = { t: "보고서 제출", d: 1 };
+    d["d" + keyD(addDays(t, 1)) + "_0"] = { t: "미팅 14:00", d: 0 };
+    d["d" + keyD(addDays(t, -2)) + "_0"] = { t: "충남보고서 완료", d: 1 };
+    d["w" + keyD(s) + "_0"] = { t: "eds 리포트", d: 0 };
+    d["w" + keyD(s) + "_1"] = { t: "성적서", d: 1 };
+    d["w" + keyD(s) + "_2"] = { t: "플립칩 데이터 정리", d: 0 };
+    localStorage.setItem(LS, JSON.stringify(d));
+  }
+  return {
+    label: FORCE_LOCAL ? "테스트 모드 · 이 기기에만 저장" : "이 기기에만 저장",
+    subscribe(f) { cb = f; f(load()); return () => { cb = null; }; },
+    set(k, v) { const a = load(); if (v === null) delete a[k]; else a[k] = v; localStorage.setItem(LS, JSON.stringify(a)); if (cb) cb(a); return Promise.resolve(); }
+  };
+}
+
+/* ---------- 달력 계산 ---------- */
+function weeksToShow() {
+  if (mq.matches) return [sundayOf(anchor)];
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1), last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+  const out = [];
+  for (let s = sundayOf(first); s <= last; s = addDays(s, 7)) out.push(s);
+  return out;
+}
+const used = k => { const v = data[k]; return !!v && (!!v.t || !!v.d); };
+function rowsFor(sun) {         // 설정 줄 수보다 아래에 입력된 내용이 있으면 그만큼 줄을 늘려 내용이 숨지 않게 함
+  let need = LINES;
+  for (let r = LINES; r < MAXROWS; r++) {
+    if (used("w" + keyD(sun) + "_" + r)) need = r + 1;
+    for (let d = 0; d < 7; d++) if (used("d" + keyD(addDays(sun, d)) + "_" + r)) need = r + 1;
+  }
+  return need;
+}
+function lineHtml(k, c) {
+  const v = data[k] || {};
+  return `<div class="ln${v.d ? " done" : ""}"><input class="t" data-k="${k}" data-c="${c}" value="${esc(v.t || "")}" maxlength="200" autocomplete="off" spellcheck="false"><span class="ck" data-k="${k}">${v.d ? "&#10003;" : ""}</span></div>`;
+}
+
+/* ---------- 렌더 ---------- */
+function render() {
+  flushAll();
+  const cal = $("cal"), weeks = weeksToShow(), tk = keyD(new Date());
+  const mobile = mq.matches;
+  $("title").textContent = mobile
+    ? `${weeks[0].getMonth() + 1}/${weeks[0].getDate()} ~ ${addDays(weeks[0], 6).getMonth() + 1}/${addDays(weeks[0], 6).getDate()}`
+    : `${anchor.getFullYear()}년 ${anchor.getMonth() + 1}월`;
+  let h = mobile ? "" : `<div id="dow">${DOW.map(x => `<div>${x}</div>`).join("")}<div></div></div>`;
+  for (const sun of weeks) {
+    const rows = rowsFor(sun);
+    h += `<div class="week" data-rows="${rows}">`;
+    for (let d = 0; d < 7; d++) {
+      const dt = addDays(sun, d), dk = keyD(dt);
+      const cls = ["day", d === 0 ? "sun" : d === 6 ? "sat" : "", !mobile && dt.getMonth() !== anchor.getMonth() ? "other" : "", dk === tk ? "today" : ""].join(" ");
+      h += `<div class="${cls}"><div class="dh">${dt.getMonth() + 1}/${dt.getDate()}<span class="dw"> (${DOW[d]})</span></div>`;
+      for (let r = 0; r < rows; r++) h += lineHtml("d" + dk + "_" + r, d);
+      h += "</div>";
+    }
+    h += `<div class="wkb"><div class="wh">Weekly To Do</div>`;
+    for (let r = 0; r < rows; r++) h += lineHtml("w" + keyD(sun) + "_" + r, "w");
+    h += "</div></div>";
+  }
+  cal.innerHTML = h;
+  fit();
+}
+function fit() {                // PC: 한 달이 화면 안에 들어오도록 줄 높이를 자동 조절(최소 20px, 넘치면 스크롤)
+  const cal = $("cal");
+  let lh = 36;
+  if (!mq.matches) {
+    const ws = cal.querySelectorAll(".week"); let lines = 0; ws.forEach(w => lines += +w.dataset.rows);
+    const dow = $("dow"), avail = cal.clientHeight - (dow ? dow.offsetHeight : 0) - ws.length * 23;
+    lh = Math.max(20, Math.min(30, Math.floor(avail / Math.max(1, lines))));
+  }
+  cal.style.setProperty("--lh", lh + "px");
+}
+function refreshValues() {      // 입력 중에는 구조를 다시 그리지 않고, 편집 중이 아닌 칸의 값만 갱신
+  document.querySelectorAll("#cal input.t").forEach(i => {
+    const k = i.dataset.k, v = data[k] || {};
+    if (document.activeElement !== i && !(k in pending)) i.value = v.t || "";
+    const ln = i.parentNode; ln.classList.toggle("done", !!v.d);
+    ln.querySelector(".ck").innerHTML = v.d ? "&#10003;" : "";
+  });
+}
+let firstData = true;
+function onData(map) {
+  data = map || {};
+  const a = document.activeElement;
+  if (a && a.classList && a.classList.contains("t")) refreshValues(); else render();
+  if (firstData) {                                 // 모바일: 처음 열 때 오늘 요일 칸이 보이도록 이동
+    firstData = false;
+    const t = document.querySelector("#cal .day.today");
+    if (t && mq.matches) $("cal").scrollTop = t.offsetTop - 4;
+  }
+}
+
+/* ---------- 저장 (입력 멈춘 뒤 3초 / 칸 이동·탭 닫기 시 즉시) ---------- */
+function write(k, t, d) {
+  const empty = !t && !d, v = empty ? null : { t, d: d ? 1 : 0 };
+  if (empty) delete data[k]; else data[k] = v;
+  store.set(k, v).catch(e => toast("저장 실패: " + e.message));
+}
+function flush(k) {
+  if (!(k in pending)) return;
+  const t = pending[k]; delete pending[k]; clearTimeout(timers[k]);
+  write(k, t, (data[k] || {}).d);
+}
+function flushAll() { Object.keys(pending).forEach(flush); }
+const cal = $("cal");
+cal.addEventListener("input", e => {
+  const i = e.target; if (!i.classList.contains("t")) return;
+  const k = i.dataset.k; pending[k] = i.value;
+  clearTimeout(timers[k]); timers[k] = setTimeout(() => flush(k), 3000);
+});
+cal.addEventListener("focusout", e => { if (e.target.classList && e.target.classList.contains("t")) flush(e.target.dataset.k); });
+cal.addEventListener("click", e => {
+  const c = e.target.closest(".ck"); if (!c) return;
+  const k = c.dataset.k, cur = data[k] || {}, t = (k in pending) ? pending[k] : (cur.t || "");
+  if (!t) return;                                  // 내용이 있는 줄만 체크
+  delete pending[k]; clearTimeout(timers[k]);
+  const d = cur.d ? 0 : 1;
+  write(k, t, d);
+  c.parentNode.classList.toggle("done", !!d); c.innerHTML = d ? "&#10003;" : "";
+});
+cal.addEventListener("keydown", e => {
+  const i = e.target; if (!i.classList || !i.classList.contains("t")) return;
+  if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter는 이동하지 않음
+  const go = (e.key === "Enter" || e.key === "ArrowDown") ? 1 : e.key === "ArrowUp" ? -1 : 0;
+  if (!go) return;
+  e.preventDefault();
+  const sel = mq.matches ? "input.t" : `input.t[data-c="${i.dataset.c}"]`;
+  const list = [...cal.querySelectorAll(sel)], n = list[list.indexOf(i) + go];
+  if (n) n.focus();
+});
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushAll(); });
 window.addEventListener("pagehide", flushAll);
 
-/* ---------- 저장소 어댑터 ---------- */
-// 클라우드: users/{uid} 문서 1개에 모든 메모를 map으로 저장 → 읽기 1회로 전체 로드
-function cloudStore(uid, name) {
-  const ref = doc(db, "users", uid);
-  return {
-    label: name,
-    subscribe(cb) {
-      return onSnapshot(ref, snap => {
-        cb(snap.exists() ? (snap.data().memos || {}) : {}, snap.metadata.fromCache);
-      }, err => { $("status").textContent = "오류: " + err.message; });
-    },
-    set: (id, patch) => setDoc(ref, { memos: { [id]: patch } }, { merge: true }),
-    del: id => updateDoc(ref, { ["memos." + id]: deleteField() })
-  };
-}
-// 로컬: localStorage
-function localStore() {
-  const LS = "calmemo_local_v2";
-  const load = () => { try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch { return {}; } };
-  let cb = null;
-  const emit = () => cb && cb(load(), false);
-  return {
-    label: "로컬 저장 (이 기기에만)",
-    subscribe(f) { cb = f; emit(); return () => { cb = null; }; },
-    set(id, patch) { const a = load(); a[id] = { ...(a[id] || {}), ...patch }; localStorage.setItem(LS, JSON.stringify(a)); emit(); return Promise.resolve(); },
-    del(id) { const a = load(); delete a[id]; localStorage.setItem(LS, JSON.stringify(a)); emit(); return Promise.resolve(); }
-  };
-}
+/* ---------- 이동 / 메뉴 ---------- */
+$("prev").onclick = () => { flushAll(); anchor = mq.matches ? addDays(anchor, -7) : new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1); render(); };
+$("next").onclick = () => { flushAll(); anchor = mq.matches ? addDays(anchor, 7) : new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1); render(); };
+$("todayBtn").onclick = () => { flushAll(); anchor = today0(); render(); };
+mq.addEventListener("change", render);
+window.addEventListener("resize", fit);
 
-/* ---------- 시작 ---------- */
-function stop() {
-  if (unsub) { unsub(); unsub = null; }
-  memoMap = {}; store = null;
-  $("app").style.display = "none";
-  $("mode").textContent = "";
-}
-function start(newStore) {
-  stop();
-  store = newStore;
-  $("app").style.display = "grid";
-  $("mode").textContent = store.label;
-  unsub = store.subscribe((data, fromCache) => {
-    memoMap = data;
-    renderCalendar();
-    if (!document.activeElement || document.activeElement.tagName !== "TEXTAREA") renderSide();
-    if (fromCache) $("status").textContent = "오프라인 캐시";
-  });
-  renderCalendar(); renderSide();
-}
-
-/* ---------- 달력 렌더 ---------- */
-function gridRange() {
-  const first = new Date(view.y, view.m, 1);
-  const start = new Date(view.y, view.m, 1 - first.getDay());
-  return [start, new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41)];
-}
-const memosOf = date => Object.entries(memoMap).map(([id, m]) => ({ id, ...m }))
-  .filter(m => m.date === date).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
-
-$("dows").innerHTML = ["일","월","화","수","목","금","토"].map(d => `<div class="dow">${d}</div>`).join("");
-function renderCalendar() {
-  $("title").textContent = `${view.y}년 ${view.m + 1}월`;
-  const [start] = gridRange();
-  const todayStr = ymd(now.getFullYear(), now.getMonth(), now.getDate());
-  const byDate = {};
-  Object.entries(memoMap).forEach(([id, m]) => (byDate[m.date] ||= []).push({ id, ...m }));
-  let html = "";
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-    const key = ymd(d.getFullYear(), d.getMonth(), d.getDate());
-    const list = (byDate[key] || []).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
-    const cls = ["cell",
-      d.getMonth() !== view.m ? "other" : "",
-      key === todayStr ? "today" : "",
-      key === selected ? "sel" : "",
-      d.getDay() === 0 ? "sun" : d.getDay() === 6 ? "sat" : ""].join(" ");
-    const chips = list.slice(0, 3).map(m => {
-      const t = document.createElement("div");
-      t.textContent = (m.time ? m.time + " " : "") + (m.text || "(빈 메모)").split("\n")[0];
-      return `<div class="chip ${m.done ? "done" : ""}">${t.innerHTML}</div>`;
-    }).join("");
-    const more = list.length > 3 ? `<div class="more">+${list.length - 3}개</div>` : "";
-    html += `<div class="${cls}" data-date="${key}"><div class="num">${d.getDate()}</div>${chips}${more}</div>`;
-  }
-  $("cells").innerHTML = html;
-}
-$("cells").onclick = e => {
-  const c = e.target.closest(".cell"); if (!c) return;
-  selected = c.dataset.date;
-  const [y, m] = selected.split("-").map(Number);
-  view = { y, m: m - 1 };
-  renderCalendar(); renderSide();
+const menu = $("menu");
+$("menuBtn").onclick = e => { e.stopPropagation(); menu.style.display = menu.style.display === "block" ? "none" : "block"; };
+document.addEventListener("click", e => { if (!menu.contains(e.target)) menu.style.display = "none"; });
+$("selLines").innerHTML = [4,5,6,7,8,9,10].map(n => `<option value="${n}"${n === LINES ? " selected" : ""}>${n}줄${n === 5 ? " (기본)" : ""}</option>`).join("");
+$("selLines").onchange = e => { LINES = +e.target.value; localStorage.setItem("ycal_lines", LINES); render(); };
+$("miExport").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: "application/json" }));
+  a.download = "YCalendar_backup_" + keyD(new Date()) + ".json";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  menu.style.display = "none"; toast("백업 파일을 받았습니다");
 };
+function setInfo() { $("miInfo").innerHTML = `${esc(who || "YCalendar")}<small>${esc(store ? store.label : "")}</small>`; }
 
-/* ---------- 선택한 날짜 메모 패널 ---------- */
-function renderSide() {
-  const [y, m, d] = selected.split("-").map(Number);
-  $("selLabel").textContent = `${m}월 ${d}일 (${"일월화수목금토"[new Date(y, m - 1, d).getDay()]})`;
-  const list = memosOf(selected);
-  $("empty").style.display = list.length ? "none" : "";
-  const box = $("list"); box.innerHTML = "";
-  list.forEach(m => {
-    const el = document.createElement("div");
-    el.className = "memo" + (m.done ? " done" : "");
-    el.innerHTML = `<div class="row"><input type="checkbox"><input type="time"><button class="del">삭제</button></div><textarea placeholder="메모 입력"></textarea>`;
-    const [chk, time, del] = el.querySelectorAll("input,button");
-    const ta = el.querySelector("textarea");
-    chk.checked = !!m.done; time.value = m.time || ""; ta.value = m.text || "";
-    chk.onchange = () => store.set(m.id, { done: chk.checked });
-    time.onchange = () => store.set(m.id, { time: time.value });
-    // 입력이 멈춘 뒤 3초 후 저장 (쓰기 횟수 절약). 포커스 이동·탭 닫기 시에는 즉시 저장
-    const flush = () => {
-      if (!pending[m.id]) return;
-      clearTimeout(timers[m.id]); delete pending[m.id];
-      store.set(m.id, { text: ta.value }).then(() => $("status").textContent = "저장됨");
-    };
-    ta.oninput = () => {
-      clearTimeout(timers[m.id]);
-      pending[m.id] = flush;
-      $("status").textContent = "입력 중... (3초 후 저장)";
-      timers[m.id] = setTimeout(flush, 3000);
-    };
-    ta.onblur = flush;
-    del.onclick = () => { if (confirm("이 메모를 삭제할까요?")) store.del(m.id); };
-    box.appendChild(el);
-  });
-}
-$("addBtn").onclick = async () => {
-  await store.set(uid8(), { date: selected, text: "", time: "", done: false });
-  setTimeout(() => { const t = $("list").querySelector(".memo:last-child textarea"); if (t) t.focus(); }, 150);
-};
-
-/* ---------- 월 이동 ---------- */
-const go = delta => { const d = new Date(view.y, view.m + delta, 1); view = { y: d.getFullYear(), m: d.getMonth() }; renderCalendar(); };
-$("prev").onclick = () => go(-1);
-$("next").onclick = () => go(1);
-$("todayBtn").onclick = () => {
-  view = { y: now.getFullYear(), m: now.getMonth() };
-  selected = ymd(now.getFullYear(), now.getMonth(), now.getDate());
-  renderCalendar(); renderSide();
-};
-
-/* ---------- 홈 화면 추가 / 바로가기 ---------- */
-const APP_NAME = "내 달력 메모";
-const q = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* ---------- 토스트 / 홈 화면 추가 / 바로가기 ---------- */
+const APP_NAME = "YCalendar";
 let toastTimer;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2400); }
-
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; });
-window.addEventListener("appinstalled", () => { deferredPrompt = null; $("btnInstall").style.display = "none"; });
+window.addEventListener("appinstalled", () => { deferredPrompt = null; $("miInstall").style.display = "none"; });
 if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isMobileDev = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIOS() || matchMedia("(pointer:coarse)").matches;
 {
-  const b = $("btnInstall");
-  if (!isStandalone()) {
-    const mobile = isMobileDev();
-    b.textContent = mobile ? "홈화면" : "바로가기";
-    b.style.display = "";
-    b.onclick = () => onInstall(mobile ? "m" : "p");
-  }
+  const b = $("miInstall");
+  if (isStandalone()) b.style.display = "none";
+  else { const mobile = isMobileDev(); b.textContent = mobile ? "홈화면 추가" : "바로가기 만들기"; b.onclick = () => { menu.style.display = "none"; onInstall(mobile ? "m" : "p"); }; }
 }
 function openInfo(title, html) {
   const m = $("modal");
@@ -324,7 +356,7 @@ async function onInstall(kind) {
     const ua = navigator.userAgent;
     const app = /KAKAOTALK/i.test(ua) ? "카카오톡" : /NAVER\(inapp/i.test(ua) ? "네이버 앱" : /DaumApps/i.test(ua) ? "다음 앱"
       : /Instagram/i.test(ua) ? "인스타그램" : /FBAN|FBAV/i.test(ua) ? "페이스북" : /Line\//i.test(ua) ? "라인" : "";
-    if (app) {   // 앱 안 브라우저에서는 홈 화면 추가 불가 → 외부 브라우저로 열기 안내
+    if (app) {
       const href = location.href.split("#")[0], u = new URL(href), android = /Android/i.test(ua), kakao = app === "카카오톡";
       const ext = kakao ? "kakaotalk://web/openExternal?url=" + encodeURIComponent(href)
         : android ? "intent://" + u.host + u.pathname + u.search + "#Intent;scheme=" + u.protocol.replace(":", "") + ";package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(href) + ";end"
@@ -332,7 +364,7 @@ async function onInstall(kind) {
       openInfo("외부 브라우저로 열어 주세요", `<p style="font-size:14px;line-height:1.6;margin:6px 0">지금은 <b>${app}</b> 안에서 열려 있어 홈 화면에 추가할 수 없습니다.</p>
         <div class="row">${ext ? `<button id="exOpen" data-url="${esc(ext)}">기본 브라우저로 열기</button>` : ""}<button id="exCopy">주소 복사</button></div>
         <p class="note" style="margin-top:10px">버튼이 동작하지 않으면 아래 순서로 열어 주세요.</p>
-        <ol><li>화면의 <b>메뉴(⋮ 또는 ≡)</b>를 누릅니다</li><li><b>'다른 브라우저로 열기'</b>(또는 '기본 브라우저로 열기', 'Safari로 열기')를 누릅니다</li><li>열린 ${isIOS() ? "Safari" : "Chrome"}에서 <b>홈화면</b> 버튼을 다시 누릅니다</li></ol>
+        <ol><li>화면의 <b>메뉴(⋮ 또는 ≡)</b>를 누릅니다</li><li><b>'다른 브라우저로 열기'</b>(또는 '기본 브라우저로 열기', 'Safari로 열기')를 누릅니다</li><li>열린 ${isIOS() ? "Safari" : "Chrome"}에서 <b>홈화면 추가</b>를 다시 누릅니다</li></ol>
         ${ext ? "" : '<p class="note">아이폰의 이 앱에서는 자동으로 열 수 없습니다. 메뉴를 이용하거나, 주소를 복사해 Safari 주소창에 붙여넣어 주세요.</p>'}`);
       if (ext) $("exOpen").onclick = () => { location.href = $("exOpen").dataset.url; };
       $("exCopy").onclick = async () => {
@@ -374,22 +406,31 @@ function downloadShortcut() {   // 더블클릭하면 기본 브라우저가 열
   const url = location.href.split("#")[0];
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${APP_NAME}</title><meta http-equiv="refresh" content="0;url=${esc(url)}"><script>location.replace(${JSON.stringify(url)});<\/script></head><body style="font-family:sans-serif;padding:24px"><p>${APP_NAME} 페이지로 이동합니다…</p><p><a href="${esc(url)}">자동으로 열리지 않으면 여기를 누르세요</a></p></body></html>`;
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
-  a.download = "Calendar_Memo.html";   // 한글 파일 이름은 일부 브라우저에서 이름이 사라지므로 영문 사용
+  a.download = "YCalendar.html";
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
   toast("바로가기 파일을 받았습니다. 바탕화면으로 옮겨 사용하세요");
 }
 
-/* ---------- 인증 ---------- */
+/* ---------- 시작 / 인증 ---------- */
+function begin(s, name, logout) {
+  if (unsub) { unsub(); unsub = null; }
+  data = {}; store = s; who = name; firstData = true;
+  $("login").style.display = "none"; $("app").style.display = "flex";
+  $("miLogout").style.display = logout ? "" : "none";
+  setInfo(); render();
+  unsub = store.subscribe(onData);
+}
+function end() {
+  if (unsub) { unsub(); unsub = null; }
+  data = {}; store = null;
+  $("app").style.display = "none"; $("login").style.display = "flex";
+}
 if (!useCloud) {
-  start(localStore());          // Firebase 설정 전: 로그인 없이 로컬 모드
+  begin(localStore(), "", false);
 } else {
-  $("loginBtn").onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.message));
-  $("logout").onclick = () => signOut(auth);
-  onAuthStateChanged(auth, u => {
-    $("login").style.display = u ? "none" : "flex";
-    $("logout").style.display = u ? "" : "none";
-    if (u) start(cloudStore(u.uid, u.displayName || u.email)); else stop();
-  });
+  $("loginBtn").onclick = () => FB.signInWithPopup(auth, new FB.GoogleAuthProvider()).catch(e => alert(e.message));
+  $("miLogout").onclick = () => { menu.style.display = "none"; flushAll(); FB.signOut(auth); };
+  FB.onAuthStateChanged(auth, u => { if (u) begin(cloudStore(u.uid), u.displayName || u.email, true); else end(); });
 }
 </script>
 </body>
