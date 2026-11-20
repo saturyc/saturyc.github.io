@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 달력 메모</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#3b6cf6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="달력메모">
+<style>
+  :root{--bg:#f5f6f8;--card:#fff;--line:#e3e6eb;--text:#1f2430;--sub:#7a8294;--accent:#3b6cf6;--today:#e8efff;--sun:#d9475a;--sat:#3b6cf6}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161b;--card:#1d2027;--line:#2c313b;--text:#e6e9ef;--sub:#8a93a6;--accent:#6b93ff;--today:#26325a;--sun:#ff7b8c;--sat:#6b93ff}}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI","Malgun Gothic",sans-serif;background:var(--bg);color:var(--text)}
+  header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0 8px 0 0}
+  button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  #title{font-size:17px;font-weight:600;min-width:120px;text-align:center}
+  .spacer{flex:1}
+  #mode{font-size:12px;color:var(--sub)}
+  #setup{display:none;flex-direction:column;align-items:center;gap:12px;margin:15vh auto 0;max-width:420px;padding:0 16px;text-align:center}
+  #setup input{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+  #setup small{color:var(--sub);line-height:1.5}
+  #app{display:none;max-width:1100px;margin:16px auto;padding:0 12px;gap:16px;grid-template-columns:1fr 340px}
+  @media (max-width:820px){#app{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .dow{padding:8px 0;text-align:center;font-size:12px;color:var(--sub);border-bottom:1px solid var(--line)}
+  .dow:first-child,.cell.sun .num{color:var(--sun)}
+  .dow:last-child,.cell.sat .num{color:var(--sat)}
+  .cell{min-height:84px;padding:6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;overflow:hidden}
+  .cell:nth-child(7n){border-right:none}
+  .cell.other{opacity:.35}
+  .cell.today{background:var(--today)}
+  .cell.sel{outline:2px solid var(--accent);outline-offset:-2px}
+  .num{font-size:13px;font-weight:600}
+  .chip{font-size:11px;margin-top:3px;padding:1px 5px;border-radius:4px;background:var(--bg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip.done{text-decoration:line-through;color:var(--sub)}
+  .more{font-size:11px;color:var(--sub);margin-top:2px}
+  #side{padding:14px;display:flex;flex-direction:column;gap:10px;align-self:start}
+  #side h2{font-size:15px;margin:0}
+  .memo{border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px}
+  .memo .row{display:flex;gap:6px;align-items:center}
+  .memo input[type=time]{font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:6px;padding:2px 4px}
+  .memo textarea{font:inherit;color:inherit;background:transparent;border:none;resize:vertical;min-height:48px;outline:none;width:100%}
+  .memo.done textarea{text-decoration:line-through;color:var(--sub)}
+  .del{margin-left:auto;padding:2px 8px;color:var(--sub)}
+  #status{font-size:12px;color:var(--sub);min-height:16px}
+  .hbtn{padding:3px 9px;font-size:12px;border-radius:6px;white-space:nowrap}
+  #modal{position:fixed;inset:0;background:rgba(15,20,40,.45);display:none;align-items:center;justify-content:center;z-index:50}
+  #modal.open{display:flex}
+  .mbox{background:var(--card);color:var(--text);border-radius:12px;width:min(480px,94vw);max-height:88vh;overflow:auto;padding:16px 18px}
+  .mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .mhead button{border:0;background:none;font-size:20px;padding:0 4px}
+  .mbox ol{padding-left:20px;line-height:1.75;font-size:14px;margin:8px 0}
+  .mbox .note{font-size:12px;color:var(--sub);margin:6px 0 0}
+  .mbox .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  #toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:99;max-width:90vw}
+  #toast.show{opacity:.94}
+  #empty{font-size:13px;color:var(--sub)}
+</style>
+</head>
+<body>
+<header>
+  <h1>내 달력 메모</h1>
+  <button id="prev">◀</button>
+  <div id="title"></div>
+  <button id="next">▶</button>
+  <button id="todayBtn">오늘</button>
+  <div class="spacer"></div>
+  <span id="mode"></span>
+  <button id="logout" style="display:none">로그아웃</button>
+  <button class="hbtn" id="btnInstall" style="display:none">홈화면</button>
+</header>
+
+<div id="login" style="display:none;flex-direction:column;align-items:center;gap:16px;margin-top:20vh">
+  <div>Google 계정으로 로그인하세요</div>
+  <button class="primary" id="loginBtn">Google 로그인</button>
+</div>
+
+<div id="app">
+  <div class="panel">
+    <div class="grid" id="dows"></div>
+    <div class="grid" id="cells"></div>
+  </div>
+  <div class="panel" id="side">
+    <h2 id="selLabel"></h2>
+    <button class="primary" id="addBtn">+ 메모 추가</button>
+    <div id="list"></div>
+    <div id="empty">메모가 없음</div>
+    <div id="status"></div>
+  </div>
+</div>
+
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, onSnapshot, setDoc, updateDoc, deleteField }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ▼ Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에서 복사한 값으로 교체
+     (교체 전에는 이 기기에만 저장되는 로컬 모드로 동작) */
+const firebaseConfig = {
+  apiKey: "AIzaSyBRSm4qBkpwlxr_MIgAhd3TbCrvCgkoup4",
+  authDomain: "calendar-5d976.firebaseapp.com",
+  projectId: "calendar-5d976",
+  storageBucket: "calendar-5d976.firebasestorage.app",
+  messagingSenderId: "719540754928",
+  appId: "1:719540754928:web:18be795ea64b2705072535"
+};
+const useCloud = firebaseConfig.apiKey !== "YOUR_API_KEY";
+let auth = null, db = null;
+if (useCloud) {
+  const fbApp = initializeApp(firebaseConfig);
+  auth = getAuth(fbApp);
+  // 오프라인 캐시 사용 → 같은 데이터 재조회 시 읽기 횟수 절약
+  db = initializeFirestore(fbApp, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+}
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const ymd = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;   // m: 0~11
+const uid8 = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const now = new Date();
+let view = { y: now.getFullYear(), m: now.getMonth() };
+let selected = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+let memoMap = {};          // id -> memo (전체)
+let store = null;          // 저장소 어댑터
+let unsub = null;
+const timers = {};
+const pending = {};        // 아직 저장 안 된 메모의 저장 함수
+const flushAll = () => Object.values(pending).forEach(f => f());
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushAll(); });
+window.addEventListener("pagehide", flushAll);
+
+/* ---------- 저장소 어댑터 ---------- */
+// 클라우드: users/{uid} 문서 1개에 모든 메모를 map으로 저장 → 읽기 1회로 전체 로드
+function cloudStore(uid, name) {
+  const ref = doc(db, "users", uid);
+  return {
+    label: name,
+    subscribe(cb) {
+      return onSnapshot(ref, snap => {
+        cb(snap.exists() ? (snap.data().memos || {}) : {}, snap.metadata.fromCache);
+      }, err => { $("status").textContent = "오류: " + err.message; });
+    },
+    set: (id, patch) => setDoc(ref, { memos: { [id]: patch } }, { merge: true }),
+    del: id => updateDoc(ref, { ["memos." + id]: deleteField() })
+  };
+}
+// 로컬: localStorage
+function localStore() {
+  const LS = "calmemo_local_v2";
+  const load = () => { try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch { return {}; } };
+  let cb = null;
+  const emit = () => cb && cb(load(), false);
+  return {
+    label: "로컬 저장 (이 기기에만)",
+    subscribe(f) { cb = f; emit(); return () => { cb = null; }; },
+    set(id, patch) { const a = load(); a[id] = { ...(a[id] || {}), ...patch }; localStorage.setItem(LS, JSON.stringify(a)); emit(); return Promise.resolve(); },
+    del(id) { const a = load(); delete a[id]; localStorage.setItem(LS, JSON.stringify(a)); emit(); return Promise.resolve(); }
+  };
+}
+
+/* ---------- 시작 ---------- */
+function stop() {
+  if (unsub) { unsub(); unsub = null; }
+  memoMap = {}; store = null;
+  $("app").style.display = "none";
+  $("mode").textContent = "";
+}
+function start(newStore) {
+  stop();
+  store = newStore;
+  $("app").style.display = "grid";
+  $("mode").textContent = store.label;
+  unsub = store.subscribe((data, fromCache) => {
+    memoMap = data;
+    renderCalendar();
+    if (!document.activeElement || document.activeElement.tagName !== "TEXTAREA") renderSide();
+    if (fromCache) $("status").textContent = "오프라인 캐시";
+  });
+  renderCalendar(); renderSide();
+}
+
+/* ---------- 달력 렌더 ---------- */
+function gridRange() {
+  const first = new Date(view.y, view.m, 1);
+  const start = new Date(view.y, view.m, 1 - first.getDay());
+  return [start, new Date(start.getFullYear(), start.getMonth(), start.getDate() + 41)];
+}
+const memosOf = date => Object.entries(memoMap).map(([id, m]) => ({ id, ...m }))
+  .filter(m => m.date === date).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+
+$("dows").innerHTML = ["일","월","화","수","목","금","토"].map(d => `<div class="dow">${d}</div>`).join("");
+function renderCalendar() {
+  $("title").textContent = `${view.y}년 ${view.m + 1}월`;
+  const [start] = gridRange();
+  const todayStr = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  const byDate = {};
+  Object.entries(memoMap).forEach(([id, m]) => (byDate[m.date] ||= []).push({ id, ...m }));
+  let html = "";
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const key = ymd(d.getFullYear(), d.getMonth(), d.getDate());
+    const list = (byDate[key] || []).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+    const cls = ["cell",
+      d.getMonth() !== view.m ? "other" : "",
+      key === todayStr ? "today" : "",
+      key === selected ? "sel" : "",
+      d.getDay() === 0 ? "sun" : d.getDay() === 6 ? "sat" : ""].join(" ");
+    const chips = list.slice(0, 3).map(m => {
+      const t = document.createElement("div");
+      t.textContent = (m.time ? m.time + " " : "") + (m.text || "(빈 메모)").split("\n")[0];
+      return `<div class="chip ${m.done ? "done" : ""}">${t.innerHTML}</div>`;
+    }).join("");
+    const more = list.length > 3 ? `<div class="more">+${list.length - 3}개</div>` : "";
+    html += `<div class="${cls}" data-date="${key}"><div class="num">${d.getDate()}</div>${chips}${more}</div>`;
+  }
+  $("cells").innerHTML = html;
+}
+$("cells").onclick = e => {
+  const c = e.target.closest(".cell"); if (!c) return;
+  selected = c.dataset.date;
+  const [y, m] = selected.split("-").map(Number);
+  view = { y, m: m - 1 };
+  renderCalendar(); renderSide();
+};
+
+/* ---------- 선택한 날짜 메모 패널 ---------- */
+function renderSide() {
+  const [y, m, d] = selected.split("-").map(Number);
+  $("selLabel").textContent = `${m}월 ${d}일 (${"일월화수목금토"[new Date(y, m - 1, d).getDay()]})`;
+  const list = memosOf(selected);
+  $("empty").style.display = list.length ? "none" : "";
+  const box = $("list"); box.innerHTML = "";
+  list.forEach(m => {
+    const el = document.createElement("div");
+    el.className = "memo" + (m.done ? " done" : "");
+    el.innerHTML = `<div class="row"><input type="checkbox"><input type="time"><button class="del">삭제</button></div><textarea placeholder="메모 입력"></textarea>`;
+    const [chk, time, del] = el.querySelectorAll("input,button");
+    const ta = el.querySelector("textarea");
+    chk.checked = !!m.done; time.value = m.time || ""; ta.value = m.text || "";
+    chk.onchange = () => store.set(m.id, { done: chk.checked });
+    time.onchange = () => store.set(m.id, { time: time.value });
+    // 입력이 멈춘 뒤 3초 후 저장 (쓰기 횟수 절약). 포커스 이동·탭 닫기 시에는 즉시 저장
+    const flush = () => {
+      if (!pending[m.id]) return;
+      clearTimeout(timers[m.id]); delete pending[m.id];
+      store.set(m.id, { text: ta.value }).then(() => $("status").textContent = "저장됨");
+    };
+    ta.oninput = () => {
+      clearTimeout(timers[m.id]);
+      pending[m.id] = flush;
+      $("status").textContent = "입력 중... (3초 후 저장)";
+      timers[m.id] = setTimeout(flush, 3000);
+    };
+    ta.onblur = flush;
+    del.onclick = () => { if (confirm("이 메모를 삭제할까요?")) store.del(m.id); };
+    box.appendChild(el);
+  });
+}
+$("addBtn").onclick = async () => {
+  await store.set(uid8(), { date: selected, text: "", time: "", done: false });
+  setTimeout(() => { const t = $("list").querySelector(".memo:last-child textarea"); if (t) t.focus(); }, 150);
+};
+
+/* ---------- 월 이동 ---------- */
+const go = delta => { const d = new Date(view.y, view.m + delta, 1); view = { y: d.getFullYear(), m: d.getMonth() }; renderCalendar(); };
+$("prev").onclick = () => go(-1);
+$("next").onclick = () => go(1);
+$("todayBtn").onclick = () => {
+  view = { y: now.getFullYear(), m: now.getMonth() };
+  selected = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  renderCalendar(); renderSide();
+};
+
+/* ---------- 홈 화면 추가 / 바로가기 ---------- */
+const APP_NAME = "내 달력 메모";
+const q = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let toastTimer;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2400); }
+
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; });
+window.addEventListener("appinstalled", () => { deferredPrompt = null; $("btnInstall").style.display = "none"; });
+if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isMobileDev = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIOS() || matchMedia("(pointer:coarse)").matches;
+{
+  const b = $("btnInstall");
+  if (!isStandalone()) {
+    const mobile = isMobileDev();
+    b.textContent = mobile ? "홈화면" : "바로가기";
+    b.style.display = "";
+    b.onclick = () => onInstall(mobile ? "m" : "p");
+  }
+}
+function openInfo(title, html) {
+  const m = $("modal");
+  m.innerHTML = `<div class="mbox"><div class="mhead"><b style="font-size:16px">${title}</b><button id="mclose">✕</button></div>${html}</div>`;
+  m.classList.add("open");
+  const close = () => m.classList.remove("open");
+  $("mclose").onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  return close;
+}
+async function onInstall(kind) {
+  if (kind === "m") {
+    const ua = navigator.userAgent;
+    const app = /KAKAOTALK/i.test(ua) ? "카카오톡" : /NAVER\(inapp/i.test(ua) ? "네이버 앱" : /DaumApps/i.test(ua) ? "다음 앱"
+      : /Instagram/i.test(ua) ? "인스타그램" : /FBAN|FBAV/i.test(ua) ? "페이스북" : /Line\//i.test(ua) ? "라인" : "";
+    if (app) {   // 앱 안 브라우저에서는 홈 화면 추가 불가 → 외부 브라우저로 열기 안내
+      const href = location.href.split("#")[0], u = new URL(href), android = /Android/i.test(ua), kakao = app === "카카오톡";
+      const ext = kakao ? "kakaotalk://web/openExternal?url=" + encodeURIComponent(href)
+        : android ? "intent://" + u.host + u.pathname + u.search + "#Intent;scheme=" + u.protocol.replace(":", "") + ";package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(href) + ";end"
+        : "";
+      openInfo("외부 브라우저로 열어 주세요", `<p style="font-size:14px;line-height:1.6;margin:6px 0">지금은 <b>${app}</b> 안에서 열려 있어 홈 화면에 추가할 수 없습니다.</p>
+        <div class="row">${ext ? `<button id="exOpen" data-url="${esc(ext)}">기본 브라우저로 열기</button>` : ""}<button id="exCopy">주소 복사</button></div>
+        <p class="note" style="margin-top:10px">버튼이 동작하지 않으면 아래 순서로 열어 주세요.</p>
+        <ol><li>화면의 <b>메뉴(⋮ 또는 ≡)</b>를 누릅니다</li><li><b>'다른 브라우저로 열기'</b>(또는 '기본 브라우저로 열기', 'Safari로 열기')를 누릅니다</li><li>열린 ${isIOS() ? "Safari" : "Chrome"}에서 <b>홈화면</b> 버튼을 다시 누릅니다</li></ol>
+        ${ext ? "" : '<p class="note">아이폰의 이 앱에서는 자동으로 열 수 없습니다. 메뉴를 이용하거나, 주소를 복사해 Safari 주소창에 붙여넣어 주세요.</p>'}`);
+      if (ext) $("exOpen").onclick = () => { location.href = $("exOpen").dataset.url; };
+      $("exCopy").onclick = async () => {
+        let ok = false;
+        try { await navigator.clipboard.writeText(href); ok = true; }
+        catch { const ta = document.createElement("textarea"); ta.value = href; document.body.appendChild(ta); ta.select(); try { ok = document.execCommand("copy"); } catch {} ta.remove(); }
+        toast(ok ? "주소를 복사했습니다. 브라우저 주소창에 붙여넣으세요" : "복사하지 못했습니다");
+      };
+      return;
+    }
+    const ios = isIOS(), sam = /SamsungBrowser/i.test(ua);
+    const steps = ios
+      ? `<ol><li>반드시 <b>Safari</b>로 이 페이지를 엽니다 (카카오톡·네이버 앱 안에서는 안 됩니다)</li><li>화면 아래(또는 위)의 <b>공유 버튼</b>(네모에 화살표)을 누릅니다</li><li><b>'홈 화면에 추가'</b>를 누르고 오른쪽 위 <b>추가</b>를 누릅니다</li></ol><p class="note">홈 화면 아이콘으로 처음 열면 로그인을 한 번 다시 해야 할 수 있습니다.</p>`
+      : sam
+      ? `<ol><li>화면 아래의 <b>≡ 메뉴</b>를 누릅니다</li><li><b>앱 설치</b>(또는 <b>현재 페이지 추가 → 홈 화면</b>)를 누릅니다</li><li><b>추가</b>를 누릅니다</li></ol>`
+      : `<ol><li><b>Chrome</b>으로 이 페이지를 엽니다 (카카오톡·네이버 앱 안에서는 안 됩니다)</li><li>오른쪽 위 <b>⋮ 메뉴</b>를 누릅니다</li><li><b>'앱 설치'</b>(또는 <b>'홈 화면에 추가'</b>)를 누르고 <b>설치/추가</b>를 누릅니다</li></ol>`;
+    const close = openInfo("홈 화면에 추가", `${ios ? "" : '<div class="row"><button id="appInst">앱 설치</button></div><p class="note" style="margin-top:6px">홈 화면에 앱 아이콘으로 설치됩니다.</p><p class="note" style="margin-top:10px">버튼이 동작하지 않으면 아래 순서로 추가해 주세요.</p>'}${steps}`);
+    if (!ios) $("appInst").onclick = async () => {
+      if (!deferredPrompt) { toast("이 브라우저에서는 아래 순서대로 메뉴에서 설치해 주세요"); return; }
+      const p = deferredPrompt; deferredPrompt = null; p.prompt();
+      const r = await p.userChoice.catch(() => null);
+      if (r && r.outcome === "accepted") { toast("홈 화면에 추가했습니다"); close(); }
+    };
+    return;
+  }
+  const close = openInfo("바로가기 만들기",
+    `<div class="row"><button id="scFile">바로가기 파일 받기 (.html)</button><button id="scApp">앱 설치</button></div>
+     <ol><li><b>바로가기 파일 받기</b>: 내려받은 파일을 <b>바탕화면</b>으로 옮기면, 더블클릭할 때 기본 브라우저에서 이 페이지가 열립니다.</li><li><b>앱 설치</b>: 앱 아이콘이 바탕화면·시작 메뉴에 생기고 별도 창으로 열립니다. (Chrome·Edge)</li></ol>
+     <p class="note">아이콘이 있는 바로가기가 필요하면 Chrome·Edge 메뉴(⋮) → 저장 및 공유 → <b>바로가기 만들기</b>를 이용하세요. ("창으로 열기"는 끄면 일반 브라우저로 열립니다)</p>`);
+  $("scFile").onclick = () => downloadShortcut();
+  $("scApp").onclick = async () => {
+    if (!deferredPrompt) { toast("주소창 오른쪽의 설치 아이콘 또는 ⋮ 메뉴 → 저장 및 공유 → 앱 설치를 이용해 주세요"); return; }
+    const p = deferredPrompt; deferredPrompt = null; p.prompt();
+    const r = await p.userChoice.catch(() => null);
+    if (r && r.outcome === "accepted") { toast("앱을 설치했습니다"); close(); }
+  };
+}
+function downloadShortcut() {   // 더블클릭하면 기본 브라우저가 열려 이 주소로 이동하는 바로가기(.html) 파일
+  const url = location.href.split("#")[0];
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${APP_NAME}</title><meta http-equiv="refresh" content="0;url=${esc(url)}"><script>location.replace(${JSON.stringify(url)});<\/script></head><body style="font-family:sans-serif;padding:24px"><p>${APP_NAME} 페이지로 이동합니다…</p><p><a href="${esc(url)}">자동으로 열리지 않으면 여기를 누르세요</a></p></body></html>`;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+  a.download = "Calendar_Memo.html";   // 한글 파일 이름은 일부 브라우저에서 이름이 사라지므로 영문 사용
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  toast("바로가기 파일을 받았습니다. 바탕화면으로 옮겨 사용하세요");
+}
+
+/* ---------- 인증 ---------- */
+if (!useCloud) {
+  start(localStore());          // Firebase 설정 전: 로그인 없이 로컬 모드
+} else {
+  $("loginBtn").onclick = () => signInWithPopup(auth, new GoogleAuthProvider()).catch(e => alert(e.message));
+  $("logout").onclick = () => signOut(auth);
+  onAuthStateChanged(auth, u => {
+    $("login").style.display = u ? "none" : "flex";
+    $("logout").style.display = u ? "" : "none";
+    if (u) start(cloudStore(u.uid, u.displayName || u.email)); else stop();
+  });
+}
+</script>
+</body>
+</html>
