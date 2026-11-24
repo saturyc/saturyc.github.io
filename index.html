@@ -56,6 +56,7 @@
   .day.sun .dh{color:var(--sun)}
   .day.sat .dh{color:var(--sat)}
   .day.other .dh{opacity:.5}
+  .day.mstart:not(.today) .dt{color:var(--accent)}
   .day.today .dh{background:var(--todaybg);color:#fff;font-weight:700}
   .dw{display:none}
   .wkb{min-width:0;border-left:2px solid var(--line)}
@@ -162,6 +163,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const keyD = dt => `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
 const addDays = (dt, n) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + n);
 const sundayOf = dt => addDays(dt, -dt.getDay());
+const PCWEEKS = 5;   // PC: 한 화면에 보이는 주 수
 const mondayOf = dt => addDays(dt, -((dt.getDay() + 6) % 7));   // 모바일은 월요일 시작
 let mTab = "day";   // 모바일 탭: day(요일별) / wk(Weekly To Do)
 const DOW = ["일","월","화","수","목","금","토"];
@@ -226,9 +228,8 @@ function localStore() {
 /* ---------- 달력 계산 ---------- */
 function weeksToShow() {
   if (mq.matches) return [mondayOf(anchor)];
-  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1), last = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
-  const out = [];
-  for (let s = sundayOf(first); s <= last; s = addDays(s, 7)) out.push(s);
+  const out = [], s0 = addDays(sundayOf(anchor), -7 * Math.floor(PCWEEKS / 2));   // 기준 주가 항상 가운데(5주 중 3번째)
+  for (let i = 0; i < PCWEEKS; i++) out.push(addDays(s0, 7 * i));
   return out;
 }
 const used = k => { const v = data[k]; return !!v && (!!v.t || !!v.d); };
@@ -250,10 +251,10 @@ function render() {
   flushAll();
   const cal = $("cal"), weeks = weeksToShow(), tk = keyD(new Date());
   const mobile = mq.matches;
-  const w6 = addDays(weeks[0], 6);
+  const w6 = addDays(weeks[0], 6), mid = addDays(weeks[Math.floor(weeks.length / 2)], 3);   // PC 월 표시 기준: 가운데 주의 수요일이 속한 달
   $("title").innerHTML = mobile
     ? `<span class="big">${weeks[0].getMonth() + 1}/${weeks[0].getDate()} ~ ${w6.getMonth() + 1}/${w6.getDate()}</span>`
-    : `<span class="yr">${anchor.getFullYear()}</span><span class="big">${anchor.getMonth() + 1}월</span>`;
+    : `<span class="yr">${mid.getFullYear()}</span><span class="big">${mid.getMonth() + 1}월</span>`;
   let h = mobile ? "" : `<div id="dow">${DOW.map(x => `<div>${x}</div>`).join("")}<div></div></div>`;
   for (const sun of weeks) {
     const wk = keyD(mobile ? addDays(sun, -1) : sun);   // Weekly 메모 키는 항상 일요일 기준 (PC와 공유; 모바일은 그 월요일이 속한 PC 주)
@@ -261,7 +262,7 @@ function render() {
     h += `<div class="week" data-rows="${rows}">`;
     for (let n = 0; n < 7; n++) {
       const dt = addDays(sun, n), dk = keyD(dt), d = dt.getDay();
-      const cls = ["day", d === 0 ? "sun" : d === 6 ? "sat" : "", !mobile && dt.getMonth() !== anchor.getMonth() ? "other" : "", dk === tk ? "today" : ""].join(" ");
+      const cls = ["day", d === 0 ? "sun" : d === 6 ? "sat" : "", !mobile && dt.getDate() === 1 ? "mstart" : "", dk === tk ? "today" : ""].join(" ");
       h += `<div class="${cls}" data-dk="${dk}"><div class="dh"><span class="dt">${dt.getMonth() + 1}/${dt.getDate()}<span class="dw"> (${DOW[d]})</span></span><span class="hck" title="이 날 전체 체크/해제"></span></div>`;
       for (let r = 0; r < rows; r++) h += lineHtml("d" + dk + "_" + r, d);
       h += "</div>";
@@ -377,7 +378,7 @@ function checkDay() {
   if (nowK === lastToday || !store) return;
   const pd = new Date(+lastToday.slice(0, 4), +lastToday.slice(4, 6) - 1, +lastToday.slice(6, 8));
   const following = mq.matches ? keyD(mondayOf(anchor)) === keyD(mondayOf(pd))
-    : (anchor.getFullYear() === pd.getFullYear() && anchor.getMonth() === pd.getMonth());   // 지금 보던 화면이 '오늘이 있던 달/주'였는지
+    : keyD(sundayOf(anchor)) === keyD(sundayOf(pd));   // 지금 보던 화면이 '오늘이 있던 달/주'였는지
   const a = document.activeElement, editing = !!(a && a.classList && a.classList.contains("t"));
   if (following && editing) return;                // 입력 중이면 화면을 다시 그리지 않고 30초 뒤 다시 확인
   lastToday = nowK;
@@ -390,10 +391,20 @@ window.addEventListener("focus", checkDay);
 window.addEventListener("pageshow", checkDay);
 
 /* ---------- 이동 / 메뉴 ---------- */
-$("prev").onclick = () => { flushAll(); anchor = mq.matches ? addDays(anchor, -7) : new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1); render(); };
-$("next").onclick = () => { flushAll(); anchor = mq.matches ? addDays(anchor, 7) : new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1); render(); };
+$("prev").onclick = () => { flushAll(); anchor = addDays(anchor, mq.matches ? -7 : -28); render(); };
+$("next").onclick = () => { flushAll(); anchor = addDays(anchor, mq.matches ? 7 : 28); render(); };
 $("wkTab").onclick = () => { flushAll(); mTab = mTab === "wk" ? "day" : "wk"; render(); $("cal").scrollTop = 0; };
 $("todayBtn").onclick = () => { flushAll(); anchor = today0(); render(); };
+let wheelAt = 0;                // PC: 마우스 휠 한 칸 = 한 주 이동 (줄이 넘쳐 스크롤이 생기면 끝에 닿았을 때만 주 이동)
+cal.addEventListener("wheel", e => {
+  if (mq.matches || Math.abs(e.deltaY) < 4 || e.ctrlKey) return;
+  const up = e.deltaY < 0, over = cal.scrollHeight > cal.clientHeight + 1;
+  if (over && (up ? cal.scrollTop > 0 : cal.scrollTop + cal.clientHeight < cal.scrollHeight - 1)) return;
+  e.preventDefault();
+  const now = performance.now(); if (now - wheelAt < 160) return; wheelAt = now;
+  flushAll(); anchor = addDays(anchor, up ? -7 : 7); render();
+  if (over) cal.scrollTop = up ? cal.scrollHeight : 0;
+}, { passive: false });
 mq.addEventListener("change", render);
 window.addEventListener("resize", fit);
 
