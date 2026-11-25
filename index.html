@@ -61,6 +61,8 @@
   .dw{display:none}
   .wkb{min-width:0;border-left:2px solid var(--line)}
   .wh{display:flex;align-items:center;height:22px;line-height:22px;padding:0 0 0 8px;background:var(--dark);color:#fff;font-weight:600;font-size:12px}
+  #cal.selecting,#cal.selecting *{user-select:none!important;cursor:default}
+  .ln.sel{background:rgba(59,108,246,.2);box-shadow:inset 0 0 0 1px rgba(59,108,246,.55)}
   .ln{display:flex;height:var(--lh);border-bottom:1px dotted var(--dot)}
   .ln input.t{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--text);font:inherit;font-size:var(--fs,14px);padding:0 5px;outline:none;border-radius:0}
   .ln input.t:focus{background:var(--accentbg)}
@@ -295,7 +297,8 @@ function refreshValues() {      // 입력 중에는 구조를 다시 그리지 �
   });
   updateHeads();
 }
-function updateHeads() {        // 날짜/Weekly 제목줄의 전체 체크 칸: 모든 줄이 체크되면 ✓
+function updateHeads() {
+  paintSel();        // 날짜/Weekly 제목줄의 전체 체크 칸: 모든 줄이 체크되면 ✓
   document.querySelectorAll("#cal .day, #cal .wkb").forEach(b => {
     const ins = b.querySelectorAll("input.t"), h = b.querySelector(".hck");
     h.innerHTML = ins.length && [...ins].every(i => (data[i.dataset.k] || {}).d) ? "&#10003;" : "";
@@ -368,6 +371,88 @@ cal.addEventListener("keydown", e => {
   const list = [...cal.querySelectorAll(sel)], n = list[list.indexOf(i) + go];
   if (n) n.focus();
 });
+
+/* ---------- PC: 마우스 드래그로 여러 칸 선택 → Delete(내용 삭제) / Ctrl+C / Ctrl+V ---------- */
+let selKeys = new Set(), dragStart = null, selecting = false;
+function cellList() {           // 화면의 모든 입력 칸 + 위치(열, 주, 줄)
+  const out = [];
+  cal.querySelectorAll(".week").forEach((w, wi) => w.querySelectorAll("input.t").forEach(el => {
+    const k = el.dataset.k, r = +k.slice(k.lastIndexOf("_") + 1);
+    out.push({ el, k, col: el.dataset.c === "w" ? 7 : +el.dataset.c, o: wi * 100 + r });
+  }));
+  return out;
+}
+function paintSel() { cal.querySelectorAll(".ln").forEach(l => l.classList.toggle("sel", selKeys.has(l.querySelector("input.t").dataset.k))); }
+function clearSel() { if (selKeys.size) { selKeys = new Set(); paintSel(); } }
+function selectRect(a, b) {
+  const L = cellList(), A = L.find(c => c.el === a), B = L.find(c => c.el === b);
+  if (!A || !B) return;
+  const c1 = Math.min(A.col, B.col), c2 = Math.max(A.col, B.col), o1 = Math.min(A.o, B.o), o2 = Math.max(A.o, B.o);
+  selKeys = new Set(L.filter(c => c.col >= c1 && c.col <= c2 && c.o >= o1 && c.o <= o2).map(c => c.k));
+  paintSel();
+}
+const curText = k => (k in pending) ? pending[k] : ((data[k] || {}).t || "");
+function setTexts(map) {         // {키: 글자} 일괄 반영 (체크 상태는 유지, 비고 체크도 없으면 삭제)
+  const obj = {};
+  for (const k in map) {
+    const t = map[k].slice(0, 200), d = (data[k] || {}).d ? 1 : 0, v = (!t && !d) ? null : { t, d };
+    delete pending[k]; clearTimeout(timers[k]);
+    obj[k] = v; if (v) data[k] = v; else delete data[k];
+  }
+  if (!Object.keys(obj).length) return;
+  refreshValues();
+  const ae = document.activeElement; if (ae && ae.dataset && ae.dataset.k in map) ae.value = (data[ae.dataset.k] || {}).t || "";
+  store.setMany(obj).then(flashSaved).catch(err => toast("저장 실패: " + err.message));
+}
+cal.addEventListener("mousedown", e => {
+  if (mq.matches || e.button !== 0) return;
+  const ln = e.target.closest(".ln"), inp = ln && e.target.classList.contains("t") ? e.target : null;
+  if (!inp) { dragStart = null; if (!e.target.closest(".ck")) clearSel(); return; }
+  clearSel(); dragStart = inp; selecting = false;
+});
+document.addEventListener("mousemove", e => {
+  if (!dragStart || !(e.buttons & 1)) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY), ln = el && el.closest && el.closest(".ln"), c = ln && ln.querySelector("input.t");
+  if (!c || (c === dragStart && !selecting)) return;
+  if (!selecting) { selecting = true; cal.classList.add("selecting"); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); getSelection().removeAllRanges(); }
+  selectRect(dragStart, c);
+});
+document.addEventListener("mouseup", () => { dragStart = null; selecting = false; cal.classList.remove("selecting"); });
+cal.addEventListener("focusin", e => { if (!selecting && e.target.classList && e.target.classList.contains("t")) clearSel(); });
+const noInput = () => { const a = document.activeElement; return !(a && a.classList && a.classList.contains("t")); };
+document.addEventListener("keydown", e => {
+  if (!selKeys.size || !noInput()) return;
+  if (e.key === "Escape") { clearSel(); return; }
+  if (e.key === "Delete" || e.key === "Backspace") {
+    e.preventDefault(); const m = {}; selKeys.forEach(k => { m[k] = ""; }); setTexts(m);
+  }
+});
+document.addEventListener("copy", e => {
+  if (!selKeys.size || !noInput()) return;
+  const L = cellList().filter(c => selKeys.has(c.k)), rows = [...new Set(L.map(c => c.o))].sort((a, b) => a - b);
+  const c1 = Math.min(...L.map(c => c.col)), c2 = Math.max(...L.map(c => c.col));
+  const tsv = rows.map(o => { const r = []; for (let c = c1; c <= c2; c++) { const x = L.find(q => q.o === o && q.col === c); r.push(x ? curText(x.k).replace(/[\t\r\n]/g, " ") : ""); } return r.join("\t"); }).join("\n");
+  e.clipboardData.setData("text/plain", tsv); e.preventDefault(); toast("복사됨");
+});
+document.addEventListener("paste", e => {
+  if (mq.matches) return;
+  const raw = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
+  const text = raw.replace(/\r\n?/g, "\n").replace(/\n$/, ""), multi = /[\t\n]/.test(text), L = cellList();
+  let start = null;
+  if (noInput()) {
+    if (!selKeys.size) return;
+    const sel = L.filter(c => selKeys.has(c.k)); start = sel.slice().sort((a, b) => a.o - b.o || a.col - b.col)[0];
+    if (!multi && sel.length > 1) { e.preventDefault(); const m = {}; sel.forEach(c => { m[c.k] = text; }); setTexts(m); return; }
+  } else {
+    if (!multi) return;                            // 한 칸 안의 일반 붙여넣기는 기본 동작
+    start = L.find(c => c.el === document.activeElement);
+  }
+  if (!start) return;
+  e.preventDefault();
+  const rows = text.split("\n").map(r => r.split("\t")), os = [...new Set(L.map(c => c.o))].sort((a, b) => a - b), oi = os.indexOf(start.o), m = {};
+  rows.forEach((r, i) => r.forEach((v, j) => { const c = L.find(q => q.o === os[oi + i] && q.col === start.col + j); if (c) m[c.k] = v; }));
+  setTexts(m);
+});
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushAll(); });
 window.addEventListener("pagehide", flushAll);
 
@@ -391,10 +476,10 @@ window.addEventListener("focus", checkDay);
 window.addEventListener("pageshow", checkDay);
 
 /* ---------- 이동 / 메뉴 ---------- */
-$("prev").onclick = () => { flushAll(); anchor = addDays(anchor, mq.matches ? -7 : -28); render(); };
-$("next").onclick = () => { flushAll(); anchor = addDays(anchor, mq.matches ? 7 : 28); render(); };
+$("prev").onclick = () => { flushAll(); clearSel(); anchor = addDays(anchor, mq.matches ? -7 : -28); render(); };
+$("next").onclick = () => { flushAll(); clearSel(); anchor = addDays(anchor, mq.matches ? 7 : 28); render(); };
 $("wkTab").onclick = () => { flushAll(); mTab = mTab === "wk" ? "day" : "wk"; render(); $("cal").scrollTop = 0; };
-$("todayBtn").onclick = () => { flushAll(); anchor = today0(); render(); };
+$("todayBtn").onclick = () => { flushAll(); clearSel(); anchor = today0(); render(); };
 let wheelAt = 0;                // PC: 마우스 휠 한 칸 = 한 주 이동 (줄이 넘쳐 스크롤이 생기면 끝에 닿았을 때만 주 이동)
 cal.addEventListener("wheel", e => {
   if (mq.matches || Math.abs(e.deltaY) < 4 || e.ctrlKey) return;
@@ -402,7 +487,7 @@ cal.addEventListener("wheel", e => {
   if (over && (up ? cal.scrollTop > 0 : cal.scrollTop + cal.clientHeight < cal.scrollHeight - 1)) return;
   e.preventDefault();
   const now = performance.now(); if (now - wheelAt < 160) return; wheelAt = now;
-  flushAll(); anchor = addDays(anchor, up ? -7 : 7); render();
+  flushAll(); clearSel(); anchor = addDays(anchor, up ? -7 : 7); render();
   if (over) cal.scrollTop = up ? cal.scrollHeight : 0;
 }, { passive: false });
 mq.addEventListener("change", render);
