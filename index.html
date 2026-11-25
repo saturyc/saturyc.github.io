@@ -392,8 +392,11 @@ function selectRect(a, b) {
   paintSel();
 }
 const curText = k => (k in pending) ? pending[k] : ((data[k] || {}).t || "");
+const undoStack = [];           // 되돌리기: 칸 삭제/잘라내기/붙여넣기 최대 10회
 function setTexts(map) {         // {키: 글자} 일괄 반영 (체크 상태는 유지, 비고 체크도 없으면 삭제)
-  const obj = {};
+  const obj = {}, prev = {};
+  for (const k in map) prev[k] = data[k] ? { t: data[k].t || "", d: data[k].d ? 1 : 0 } : null;
+  if (Object.keys(prev).some(k => (prev[k] ? prev[k].t : "") !== map[k].slice(0, 200))) { undoStack.push(prev); if (undoStack.length > 10) undoStack.shift(); }
   for (const k in map) {
     const t = map[k].slice(0, 200), d = (data[k] || {}).d ? 1 : 0, v = (!t && !d) ? null : { t, d };
     delete pending[k]; clearTimeout(timers[k]);
@@ -403,6 +406,14 @@ function setTexts(map) {         // {키: 글자} 일괄 반영 (체크 상태�
   refreshValues();
   const ae = document.activeElement; if (ae && ae.dataset && ae.dataset.k in map) ae.value = (data[ae.dataset.k] || {}).t || "";
   store.setMany(obj).then(flashSaved).catch(err => toast("저장 실패: " + err.message));
+}
+function undo() {
+  const prev = undoStack.pop(); if (!prev) { toast("되돌릴 내용이 없습니다"); return; }
+  const obj = {};
+  for (const k in prev) { delete pending[k]; clearTimeout(timers[k]); obj[k] = prev[k]; if (prev[k]) data[k] = prev[k]; else delete data[k]; }
+  refreshValues();
+  store.setMany(obj).then(flashSaved).catch(err => toast("저장 실패: " + err.message));
+  toast("되돌림 (남은 " + undoStack.length + "회)");
 }
 cal.addEventListener("mousedown", e => {
   if (mq.matches || e.button !== 0) return;
@@ -421,19 +432,23 @@ document.addEventListener("mouseup", () => { dragStart = null; selecting = false
 cal.addEventListener("focusin", e => { if (!selecting && e.target.classList && e.target.classList.contains("t")) clearSel(); });
 const noInput = () => { const a = document.activeElement; return !(a && a.classList && a.classList.contains("t")); };
 document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z" && noInput() && !$("modal").classList.contains("open")) { e.preventDefault(); undo(); return; }
   if (!selKeys.size || !noInput()) return;
   if (e.key === "Escape") { clearSel(); return; }
   if (e.key === "Delete" || e.key === "Backspace") {
     e.preventDefault(); const m = {}; selKeys.forEach(k => { m[k] = ""; }); setTexts(m);
   }
 });
-document.addEventListener("copy", e => {
+function doCopy(e, cut) {
   if (!selKeys.size || !noInput()) return;
   const L = cellList().filter(c => selKeys.has(c.k)), rows = [...new Set(L.map(c => c.o))].sort((a, b) => a - b);
   const c1 = Math.min(...L.map(c => c.col)), c2 = Math.max(...L.map(c => c.col));
   const tsv = rows.map(o => { const r = []; for (let c = c1; c <= c2; c++) { const x = L.find(q => q.o === o && q.col === c); r.push(x ? curText(x.k).replace(/[\t\r\n]/g, " ") : ""); } return r.join("\t"); }).join("\n");
-  e.clipboardData.setData("text/plain", tsv); e.preventDefault(); toast("복사됨");
-});
+  e.clipboardData.setData("text/plain", tsv); e.preventDefault();
+  if (cut) { const m = {}; selKeys.forEach(k => { m[k] = ""; }); setTexts(m); toast("잘라냄"); } else toast("복사됨");
+}
+document.addEventListener("copy", e => doCopy(e, false));
+document.addEventListener("cut", e => doCopy(e, true));
 document.addEventListener("paste", e => {
   if (mq.matches) return;
   const raw = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
